@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News Broadcast Bumper Transition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020617;
+      font-family: 'Segoe UI', Impact, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Fullscreen Bumper Canvas Background */
+    #bumperCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    /* Swipe Wipe Layers */
+    .wipe-layer {
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 120%;
+      height: 100%;
+      z-index: 10;
+      transform: skewX(-15deg);
+      pointer-events: none;
+    }
+    .wipe-blue {
+      background: linear-gradient(90deg, transparent 0%, #0284c7 50%, #38bdf8 100%);
+    }
+    .wipe-red {
+      background: linear-gradient(90deg, transparent 0%, #dc2626 50%, #ef4444 100%);
+    }
+
+    /* Bumper Central Content */
+    .bumper-content {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      opacity: 0;
+      transform: scale(0.7);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .channel-globe {
+      font-size: 80px;
+      margin-bottom: 10px;
+      filter: drop-shadow(0 0 25px #38bdf8);
+      animation: float 2s ease-in-out infinite alternate;
+    }
+    @keyframes float {
+      from { transform: translateY(-5px); }
+      to { transform: translateY(5px); }
+    }
+
+    .bumper-title {
+      font-size: 64px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      text-shadow: 0 0 30px rgba(56, 189, 248, 0.8), 0 0 60px rgba(2, 132, 199, 0.5);
+      background: linear-gradient(180deg, #ffffff 30%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .bumper-sub {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ef4444;
+      letter-spacing: 12px;
+      margin-top: 10px;
+      text-transform: uppercase;
+      text-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+    }
+
+    /* Screen Trigger Prompt */
+    .start-prompt {
+      position: absolute;
+      bottom: 40px;
+      z-index: 20;
+      color: #94a3b8;
+      font-size: 16px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      cursor: pointer;
+    }
+
+    /* ANIMATION KEYFRAMES */
+    .animate-wipe-blue {
+      animation: wipeSweep 1.2s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+    }
+    .animate-wipe-red {
+      animation: wipeSweep 1.2s cubic-bezier(0.77, 0, 0.175, 1) 0.15s forwards;
+    }
+    @keyframes wipeSweep {
+      0% { left: -120%; }
+      50% { left: 0%; }
+      100% { left: 120%; }
+    }
+
+    .show-content {
+      opacity: 1;
+      transform: scale(1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D Canvas Background -->
+  <canvas id="bumperCanvas"></canvas>
+
+  <!-- Wipe Layer Animations -->
+  <div id="wipeBlue" class="wipe-layer wipe-blue"></div>
+  <div id="wipeRed" class="wipe-layer wipe-red"></div>
+
+  <!-- Center News Logo & Text -->
+  <div id="bumperContent" class="bumper-content">
+    <div class="channel-globe">🌐</div>
+    <div class="bumper-title">GLOBAL NEWS LIVE</div>
+    <div class="bumper-sub">SPECIAL REPORT</div>
+  </div>
+
+  <!-- Start Prompt -->
+  <div id="prompt" class="start-prompt" onclick="playBumper()">Click Anywhere or Press SPACE to Play Animation</div>
+
+  <script>
+    /* Canvas Particle & Ring Background Renderer */
+    const canvas = document.getElementById('bumperCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, angle = 0;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Particle Stars
+    const particles = Array.from({ length: 120 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      radius: Math.random() * 2.5 + 0.5,
+      speed: Math.random() * 0.5 + 0.2
+    }));
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Radial Deep Space Gradient
+      const grad = ctx.createRadialGradient(width/2, height/2, 50, width/2, height/2, width*0.7);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(0.6, '#020617');
+      grad.addColorStop(1, '#000000');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw Floating Particles
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        p.y -= p.speed;
+        if (p.y < 0) p.y = height;
+      });
+
+      // Rotating Tech Rings
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      
+      // Outer Cyan Ring
+      ctx.rotate(angle);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([20, 15]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 220, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner Red Ring
+      ctx.rotate(-angle * 1.5);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 25]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 180, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+
+      angle += 0.008;
+      requestAnimationFrame(drawBackground);
+    }
+    drawBackground();
+
+    /* Web Audio API Sound Effects (Dramatic Broadcast Swoosh + Stinger) */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSwooshSound() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
+      const now = audioCtx.currentTime;
+
+      // Noise Swoosh
+      const bufferSize = audioCtx.sampleRate * 0.8;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(200, now);
+      filter.frequency.exponentialRampToValueAtTime(1800, now + 0.4);
+      filter.Q.value = 3;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      noise.start(now);
+
+      // News Brass Impact Tone
+      setTimeout(() => {
+        const osc = audioCtx.createOscillator();
+        const toneGain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3 note
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.15); // A4 note
+        
+        toneGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        toneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+
+        osc.connect(toneGain);
+        toneGain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1.2);
+      }, 300);
+    }
+
+    /* Play Bumper Animation Sequence */
+    let isPlaying = false;
+    function playBumper() {
+      if (isPlaying) return;
+      isPlaying = true;
+
+      document.getElementById('prompt').style.opacity = '0';
+
+      const blue = document.getElementById('wipeBlue');
+      const red = document.getElementById('wipeRed');
+      const content = document.getElementById('bumperContent');
+
+      // Reset
+      blue.classList.remove('animate-wipe-blue');
+      red.classList.remove('animate-wipe-red');
+      content.classList.remove('show-content');
+
+      void blue.offsetWidth; // Trigger reflow
+
+      // Play Sound
+      playSwooshSound();
+
+      // Trigger Swipe Animations
+      blue.classList.add('animate-wipe-blue');
+      red.classList.add('animate-wipe-red');
+
+      // Show Logo at peak of sweep
+      setTimeout(() => {
+        content.classList.add('show-content');
+      }, 400);
+
+      // Reset after 3.5s so you can record it again
+      setTimeout(() => {
+        content.classList.remove('show-content');
+        document.getElementById('prompt').style.opacity = '1';
+        isPlaying = false;
+      }, 3500);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') playBumper();
+    });
+    document.body.addEventListener('click', (e) => {
+      if (e.target.id !== 'prompt') playBumper();
+    });
+  </script>
+</body>
+</html>
